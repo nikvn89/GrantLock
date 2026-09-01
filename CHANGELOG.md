@@ -47,3 +47,9 @@
 - Kept the GenLayer Portal-inspired information architecture while replacing the CycleGuard-like charcoal/lime skin with a GrantLock-specific deep-navy and warm-metal palette.
 - Added an octagonal lock core, metallic highlight line, navy depth treatment, and gold active/navigation states so GrantLock is visually distinct without changing contract or transaction logic.
 - Contract source and StudioNet deployment address remain unchanged.
+
+## 2026-09-01 — Runtime console / role guard
+
+- Removed unsupported `gen_dbg_traceTransaction` diagnostics from production UI; execution-error detail now uses only finalized receipt/full-transaction data already returned by supported calls.
+- Added a creator-role preflight when the exact accepted resource is loaded, preventing accidental grant submission from a non-creator wallet without sending a transaction.
+- Contract source and deployment address unchanged.
