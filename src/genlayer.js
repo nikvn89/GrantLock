@@ -241,17 +241,17 @@ function deepStrings(value, output = []) {
   return output
 }
 
-export async function executionErrorDetail(txHash, fallback = '') {
-  try {
-    const trace = await readClient.debugTraceTransaction({ hash: txHash })
-    const strings = deepStrings(trace)
-      .map((value) => value.trim())
-      .filter(Boolean)
-    const preferred = strings.find((value) => /resource is locked|only resource creator|only exclusive holder|exclusive grant requires|already exists|grant already exists|invalid|cannot|too long|limit reached/i.test(value))
-    return preferred || strings.find((value) => /error|revert|usererror/i.test(value)) || fallback
-  } catch {
-    return fallback
-  }
+export function executionErrorDetail(receipt, fallback = '') {
+  // StudioNet does not expose debug tracing on all public RPCs.
+  // Never call unsupported debug methods from production UI: they create noisy
+  // console errors and cannot be treated as execution evidence. Instead, inspect
+  // only the finalized receipt / full transaction payload already returned by
+  // the supported transaction lifecycle calls.
+  const strings = deepStrings(receipt)
+    .map((value) => value.trim())
+    .filter(Boolean)
+  const preferred = strings.find((value) => /resource is locked|only resource creator|only exclusive holder|exclusive grant requires|already exists|grant already exists|invalid|cannot|too long|limit reached/i.test(value))
+  return preferred || strings.find((value) => /error|revert|usererror/i.test(value)) || fallback
 }
 
 export function txExplorerUrl(hash) {

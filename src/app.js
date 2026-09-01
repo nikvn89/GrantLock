@@ -372,7 +372,7 @@ async function createResource() {
     const receipt = await waitForFinalizedUi(hash, 'Create resource', 'Transaction sent. Waiting for FINALIZED…')
     const outcome = executionOutcome(receipt)
     if (outcome.ok === false) {
-      const detail = await executionErrorDetail(hash, `${outcome.name}. Contract state was not modified.`)
+      const detail = executionErrorDetail(receipt, `${outcome.name}. Contract state was not modified.`)
       throw new Error(detail)
     }
     const created = await inspectResource(expectedId, { quiet: true })
@@ -411,6 +411,22 @@ async function submitGrant() {
   if (!/^0x[0-9a-fA-F]{40}$/.test(wallet) || /^0x0{40}$/i.test(wallet)) return setTx({ phase: 'ERROR', label: 'Submit grant', message: 'Enter a valid non-zero grantee wallet.' })
   if (!label || !text) return setTx({ phase: 'ERROR', label: 'Submit grant', message: 'Grantee label and grant text are required.' })
 
+  // If this exact resource is already loaded from accepted state, enforce the
+  // deterministic creator-only rule in the UI before asking MetaMask to sign.
+  // This is a UX guard only; the contract remains the authority and enforces
+  // the same rule on-chain. Locked-resource writes are intentionally not
+  // pre-blocked here so reviewers can still verify the contract's lock tooth.
+  if (state.resource?.resource_id === resourceId) {
+    const creator = String(state.resource.creator || '').toLowerCase()
+    if (creator && state.account.toLowerCase() !== creator) {
+      return setTx({
+        phase: 'ERROR',
+        label: 'Submit grant blocked',
+        message: `Only the resource creator may submit grants. Switch to ${shortAddress(state.resource.creator, 10, 8)}. No transaction was sent.`,
+      })
+    }
+  }
+
   const expectedGrantId = grantIdFor(resourceId, text)
   setBusy(true)
   setTx({ phase: 'SIGNING', label: 'Submit grant', message: 'Waiting for MetaMask signature…' })
@@ -421,7 +437,7 @@ async function submitGrant() {
     const outcome = executionOutcome(receipt)
     if (outcome.ok === false) {
       await inspectResource(resourceId, { quiet: true })
-      const detail = await executionErrorDetail(hash, `${outcome.name}. No successful grant is claimed.`)
+      const detail = executionErrorDetail(receipt, `${outcome.name}. No successful grant is claimed.`)
       throw new Error(detail)
     }
     const resource = await inspectResource(resourceId, { quiet: true })
@@ -463,7 +479,7 @@ async function releaseExclusivity() {
     const outcome = executionOutcome(receipt)
     if (outcome.ok === false) {
       await inspectResource(resourceId, { quiet: true })
-      const detail = await executionErrorDetail(hash, `${outcome.name}. Lock state was not treated as changed.`)
+      const detail = executionErrorDetail(receipt, `${outcome.name}. Lock state was not treated as changed.`)
       throw new Error(detail)
     }
     const resource = await inspectResource(resourceId, { quiet: true })
