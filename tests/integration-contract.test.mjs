@@ -26,7 +26,8 @@ test('transaction lifecycle separates finalized from execution success', () => {
   assert.match(client, /FINISHED_WITH_ERROR/)
   assert.match(client, /EXECUTION_RESULT_UNAVAILABLE/)
   assert.match(client, /getTransaction/)
-  assert.match(client, /debugTraceTransaction/)
+  assert.doesNotMatch(client, /debugTraceTransaction|gen_dbg_traceTransaction/)
+  assert.match(client, /executionErrorDetail\(receipt/)
 })
 
 test('frontend re-reads contract after writes', () => {
@@ -58,4 +59,11 @@ test('no test wallet is hardcoded', () => {
   const combined = `${client}\n${app}`
   const addresses = [...combined.matchAll(/0x[0-9a-fA-F]{40}/g)].map((m)=>m[0].toLowerCase())
   assert.deepEqual([...new Set(addresses)], [address.toLowerCase()])
+})
+
+
+test('frontend blocks wrong-wallet grant before signing when accepted resource is loaded', () => {
+  const app = readFileSync(new URL('../src/app.js', import.meta.url), 'utf8')
+  assert.match(app, /Only the resource creator may submit grants/)
+  assert.match(app, /No transaction was sent/)
 })
