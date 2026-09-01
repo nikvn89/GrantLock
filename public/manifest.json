@@ -1,0 +1,13 @@
+{
+  "name": "GrantLock",
+  "short_name": "GrantLock",
+  "description": "GenLayer semantic exclusivity with deterministic enforcement.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080b0d",
+  "theme_color": "#080b0d",
+  "icons": [
+    {"src": "/logo-64.png", "sizes": "64x64", "type": "image/png"},
+    {"src": "/logo-192.png", "sizes": "192x192", "type": "image/png"}
+  ]
+}

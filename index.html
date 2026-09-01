@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#080b0d" />
+  <meta name="description" content="GrantLock — GenLayer semantic exclusivity with deterministic enforcement." />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="apple-touch-icon" href="/logo-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="stylesheet" href="/src/styles.css" />
+  <meta property="og:title" content="GrantLock" />
+  <meta property="og:description" content="Turn natural-language exclusivity into an enforceable on-chain resource lock." />
+  <meta property="og:image" content="/og-image.png" />
+  <title>GrantLock · GenLayer</title>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="side-brand" href="#overview" aria-label="GrantLock home">
+        <img src="/logo-64.png" alt="" />
+        <div><strong>GrantLock</strong><span>Intelligent Contract</span></div>
+      </a>
+
+      <nav class="side-nav">
+        <span class="nav-group">Workspace</span>
+        <a class="nav-link active" href="#overview"><span>⌂</span>Overview</a>
+        <a class="nav-link" href="#create"><span>＋</span>Create resource</a>
+        <a class="nav-link" href="#grant"><span>◇</span>Submit grant</a>
+        <a class="nav-link" href="#inspect"><span>◎</span>Inspect resource</a>
+        <span class="nav-group">Verification</span>
+        <a class="nav-link" href="#truth"><span>↗</span>Transaction truth</a>
+        <a class="nav-link" href="#reviewer"><span>✓</span>Reviewer path</a>
+      </nav>
+
+      <div class="side-bottom">
+        <div class="network-chip"><i></i><div><strong>StudioNet</strong><span>Fresh deployment</span></div></div>
+        <a class="side-explorer js-contract-link" target="_blank" rel="noreferrer">Open in Explorer ↗</a>
+      </div>
+    </aside>
+
+    <div class="content-shell">
+      <header class="topbar">
+        <div><span>GENLAYER STUDIONET</span><strong>Semantic exclusivity guard</strong></div>
+        <div class="top-actions">
+          <a class="ghost-button js-contract-link" target="_blank" rel="noreferrer">Explorer ↗</a>
+          <button class="wallet-button" id="connectWallet"><i></i><span id="walletLabel">Connect wallet</span></button>
+        </div>
+      </header>
+
+      <main>
+        <section id="overview" class="hero section-wrap">
+          <div class="hero-copy">
+            <span class="eyebrow">BUILDER PROJECT · INTELLIGENT CONTRACTS</span>
+            <h1>Exclusivity you can prove.<br><span>Locks you can enforce.</span></h1>
+            <p>GrantLock asks validators one narrow semantic question: does this grant remove the creator's unilateral freedom to give the same contract-local scope to another grantee?</p>
+            <div class="hero-actions">
+              <a class="primary-button" href="#create">Create resource</a>
+              <a class="secondary-button" href="#reviewer">Reviewer path</a>
+            </div>
+          </div>
+
+          <div class="hero-card" aria-hidden="true">
+            <div class="hero-card-head"><span class="badge badge-success">✓ Accepted source</span><span>RESOURCE-LOCAL LOCK</span></div>
+            <div class="lock-diagram">
+              <div class="party"><b>G</b><span>grantor</span></div>
+              <div class="grant-line"><span>semantic grant</span><i></i></div>
+              <div class="lock-core"><b>▣</b><span>LOCK</span></div>
+              <div class="grant-line muted"><span>later grant</span><i></i></div>
+              <div class="party dim"><b>+1</b><span>grantee</span></div>
+            </div>
+            <div class="semantic-verdict"><span>Semantic verdict</span><strong>EXCLUSIVE_GRANT / NON_EXCLUSIVE_GRANT</strong></div>
+          </div>
+
+          <div class="overview-strip">
+            <div class="overview-card contract-card">
+              <span class="eyebrow">LIVE CONTRACT</span>
+              <button id="copyContract" class="copy-line"><strong id="contractShort"></strong><span>⧉</span><em id="copyContractState"></em></button>
+              <small>Bound to the fresh StudioNet deployment.</small>
+            </div>
+            <div class="overview-card"><span class="eyebrow">CURRENT RESOURCE</span><strong id="heroResourceState">—</strong><small id="heroResourceName">Inspect a resource</small></div>
+            <div class="overview-card"><span class="eyebrow">GRANTS</span><strong id="heroGrantCount">—</strong><small>Historical, on-chain</small></div>
+            <div class="overview-card"><span class="eyebrow">WALLET ROLE</span><strong id="heroWalletRole">—</strong><small id="heroWalletRoleSub">Connect wallet</small></div>
+          </div>
+          <div class="inline-warning hidden" id="globalReadWarning"></div>
+          <div class="inline-warning hidden" id="networkWarning"></div>
+        </section>
+
+        <section class="section-wrap workspace-intro">
+          <div><span class="eyebrow">WORKSPACE</span><h2>Create, classify, enforce.</h2></div>
+          <p>The semantic decision is narrow. Authorization, IDs, lock state, history, release rights and later-grant rejection stay deterministic.</p>
+        </section>
+
+        <section class="section-wrap workflow-grid">
+          <article id="create" class="panel">
+            <div class="panel-head"><div><span class="step">01</span><h3>Create a resource</h3></div><span class="panel-icon">＋</span></div>
+            <p class="panel-lead">The connected wallet becomes the resource creator. Resource identity is deterministic from creator + name.</p>
+            <div class="example-row"><button id="loadResourceExample">Load example</button></div>
+            <label><span>Resource name</span><input id="resourceName" maxlength="80" placeholder="e.g. Atlas distribution rights" /><small id="resourceNameCount">0/80</small></label>
+            <label><span>Scope label</span><input id="scopeLabel" maxlength="120" placeholder="e.g. North America · print distribution" /><small id="scopeLabelCount">0/120</small></label>
+            <div class="derived-id hidden" id="derivedResource"><span>Derived resource ID</span><code id="derivedResourceId"></code><button id="copyDerivedResource">Copy</button></div>
+            <button class="primary-button full" id="createResource">Create resource</button>
+            <p class="fineprint">Creating a resource writes no semantic verdict. The resource starts <strong>OPEN</strong> with zero grants.</p>
+          </article>
+
+          <article id="grant" class="panel">
+            <div class="panel-head"><div><span class="step">02</span><h3>Submit a grant</h3></div><span class="panel-icon">◇</span></div>
+            <p class="panel-lead">Only the resource creator can submit. Validators classify the text; contract logic applies the consequence.</p>
+            <div class="example-row"><button id="loadExclusiveExample">Exclusive example</button><button id="loadNonExclusiveExample">Non-exclusive control</button></div>
+            <label><span>Resource ID</span><input id="grantResourceId" maxlength="64" placeholder="64-character resource id" /></label>
+            <div class="two-col">
+              <label><span>Grantee wallet</span><input id="granteeWallet" maxlength="42" placeholder="0x…" /></label>
+              <label><span>Grantee label</span><input id="granteeLabel" maxlength="80" placeholder="Distributor" /><small id="granteeLabelCount">0/80</small></label>
+            </div>
+            <label><span>Grant text</span><textarea id="grantText" maxlength="1200" rows="6" placeholder="Describe the grant in natural language."></textarea><small id="grantTextCount">0/1200</small><small id="calldataMeter" class="meter" role="status" aria-live="polite"></small></label>
+            <button class="primary-button full" id="submitGrant">Run semantic grant</button>
+            <p class="fineprint">If the resource is already <strong>LOCKED</strong>, the contract rejects this transaction before semantic inference.</p>
+          </article>
+        </section>
+
+        <section id="inspect" class="section-wrap inspector-section">
+          <div class="section-heading-row">
+            <div><span class="eyebrow">03 · INSPECT & ENFORCE</span><h2>Read the contract, not a local guess.</h2></div>
+            <p>Paste any resource ID, or create one above. Resource state and grant history are re-read from StudioNet.</p>
+          </div>
+          <div class="inspect-bar"><input id="inspectResourceId" maxlength="64" placeholder="Resource ID" /><button class="secondary-button" id="inspectResource">Inspect</button></div>
+          <div class="inline-warning hidden" id="readWarning"></div>
+
+          <div class="empty-state" id="emptyResource"><span>◎</span><strong>No resource loaded</strong><small>Create one or inspect an existing resource ID.</small></div>
+
+          <div class="resource-layout hidden" id="resourceView">
+            <article class="resource-card">
+              <div class="resource-title"><div><span>RESOURCE</span><strong id="resourceNameDisplay"></strong></div><span class="badge" id="resourceState"></span></div>
+              <div class="resource-meta"><span>Scope</span><strong id="resourceScope"></strong></div>
+              <div class="resource-meta"><span>Creator</span><code id="resourceCreator"></code></div>
+              <div class="resource-id-line"><span>Resource ID</span><code id="resourceIdDisplay"></code><button id="copyResourceId">Copy</button></div>
+              <div class="resource-stats"><div><span>Grant count</span><strong id="resourceGrantCount"></strong></div><div><span>Current holder</span><strong id="resourceHolder"></strong></div></div>
+              <div class="holder-box hidden" id="holderBox"><span>Exclusive holder</span><strong id="holderLabel"></strong><code id="holderWallet"></code><small>Historical grant remains after release.</small></div>
+              <button class="secondary-button full" id="useResourceForGrant">Use in grant form</button>
+              <button class="danger-button full hidden" id="releaseExclusivity">Release exclusivity</button>
+              <p class="fineprint" id="releaseHint"></p>
+            </article>
+
+            <article class="history-card">
+              <div class="history-head"><div><span class="eyebrow">GRANT HISTORY</span><h3>Append-only record</h3></div><span id="historyCount">0 records</span></div>
+              <div class="history-list" id="grantHistory"></div>
+              <div class="empty-history" id="emptyHistory">No grants recorded for this resource.</div>
+            </article>
+          </div>
+        </section>
+
+        <section id="truth" class="section-wrap truth-section">
+          <div class="section-heading-row"><div><span class="eyebrow">TRANSACTION TRUTH</span><h2>FINALIZED does not automatically mean success.</h2></div><p>The frontend follows the receipt, checks GenVM execution, then re-reads state. Reverts remain visible.</p></div>
+          <div class="truth-grid">
+            <div><span>01</span><strong>One signature</strong><p>Buttons lock while a write is in flight, preventing accidental double-send.</p></div>
+            <div><span>02</span><strong>Wait for FINALIZED</strong><p>The app tracks the real GenLayer transaction lifecycle.</p></div>
+            <div><span>03</span><strong>Check GenVM</strong><p>FINISHED_WITH_RETURN and FINISHED_WITH_ERROR are treated differently.</p></div>
+            <div><span>04</span><strong>Re-read state</strong><p>OPEN, LOCKED, holder and grant history come from the deployed contract.</p></div>
+          </div>
+          <div class="tx-card hidden" id="txCard"><div class="tx-icon" id="txIcon">◌</div><div class="tx-copy"><strong id="txLabel"></strong><span id="txMessage"></span><div class="tx-actions"><a class="hidden" id="txLink" target="_blank" rel="noreferrer"></a><button class="tx-stop hidden" id="stopWaiting" type="button">Stop waiting</button></div></div></div>
+        </section>
+
+        <section class="section-wrap boundary-grid">
+          <article class="panel compact"><span class="eyebrow">SEMANTIC BOUNDARY</span><h3>Validators decide only exclusivity.</h3><div class="semantic-row good"><b>✓</b><div><strong>EXCLUSIVE_GRANT</strong><span>Grant established + creator lacks unilateral freedom to grant the same scope to another grantee.</span></div></div><div class="semantic-row neutral"><b>○</b><div><strong>NON_EXCLUSIVE_GRANT</strong><span>Either the grant relationship or foreclosure is not established.</span></div></div></article>
+          <article class="panel compact"><span class="eyebrow">DETERMINISTIC TEETH</span><h3>Consequences stay on-chain.</h3><ul class="check-list"><li>creator-only grant submission</li><li>resource-local permanent history</li><li>LOCKED rejects later grants pre-inference</li><li>holder-only release</li><li>new exclusivity forbidden after prior history</li></ul></article>
+        </section>
+
+        <section id="reviewer" class="section-wrap reviewer-panel">
+          <div><span class="eyebrow">REVIEWER PATH</span><h2>Prove both semantics and enforcement.</h2><p>Use your own funded StudioNet wallets. No wallet is hardcoded into the app.</p></div>
+          <ol>
+            <li><span>01</span><div><strong>Create a fresh resource</strong><p>Connect a creator wallet, load the example and create the resource. Confirm OPEN and grant_count 0.</p></div></li>
+            <li><span>02</span><div><strong>Submit exclusive text</strong><p>Set a grantee wallet you control, load Exclusive example, submit and expect EXCLUSIVE_GRANT → LOCKED.</p></div></li>
+            <li><span>03</span><div><strong>Prove the lock has teeth</strong><p>As creator, try another grant on the locked resource. Expect FINISHED_WITH_ERROR: Resource is locked by an exclusive grant.</p></div></li>
+            <li><span>04</span><div><strong>Release as holder</strong><p>Switch to the recorded holder wallet, release exclusivity and verify OPEN while historical grant_count remains 1.</p></div></li>
+            <li><span>05</span><div><strong>Run the negative control</strong><p>Create a separate resource and submit the Non-exclusive control. Expect NON_EXCLUSIVE_GRANT → OPEN.</p></div></li>
+          </ol>
+          <a class="secondary-button js-contract-link" target="_blank" rel="noreferrer">Verify contract on Explorer ↗</a>
+        </section>
+      </main>
+
+      <footer><div class="footer-brand"><img src="/logo-64.png" alt="" /><div><strong>GrantLock</strong><span>Semantic exclusivity. Deterministic enforcement.</span></div></div><div><span>Contract</span><code id="footerContract"></code></div></footer>
+    </div>
+  </div>
+  <script type="module" src="/src/app.js"></script>
+</body>
+</html>
