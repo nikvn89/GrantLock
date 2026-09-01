@@ -1,199 +1,215 @@
 # GrantLock Testing
 
-This file separates static/build evidence from fresh StudioNet/Vercel runtime evidence.
+This file separates local/static evidence, transaction finality, GenVM execution, semantic verdicts, deterministic consequences and frontend/Vercel behavior.
 
 ## Deployment identity
 
 ```text
 Network: GenLayer StudioNet
 Contract: 0x7cDcdE83B2a5192ACC00412cf192684c951081cc
+Explorer: https://explorer-studio.genlayer.com/address/0x7cDcdE83B2a5192ACC00412cf192684c951081cc
+Production: https://grant-lock.vercel.app/
 Source SHA256: c82e52db2b1c3e0192db8212f08cc42ad749388e2cc1b8fa1da7733b0d04e3d3
 ```
 
 ## A. Local gates
 
-Run:
+Commands:
 
 ```bash
+npm install
 npm run verify:source
 npm run check
 npm test
 npm run build
 ```
 
-Required outcomes:
-
-- source SHA parity PASS;
-- all three writes and all public state views represented in frontend integration;
-- fresh deployment address bound;
-- GenLayerJS version pinned;
-- FINALIZED lifecycle handling present;
-- FINISHED_WITH_RETURN / FINISHED_WITH_ERROR split present;
-- wallet switching listeners present;
-- double-send guard present;
-- no test wallet hardcoding;
-- production build emits all public/source assets.
-
-Status at Vercel-ready export: **PASS**.
-
-## B. Runtime wallet mapping — confirm before writes
-
-Do not reuse a wallet mapping by assumption. Record:
+Observed status:
 
 ```text
-Wallet 1 — resource creator: TBD
-Wallet 2 — proposed grantee / exclusive holder: TBD
-Optional Wallet 3 — non-holder negative release: TBD
+SOURCE PARITY: PASS
+STATIC CHECK: PASS
+AUTOMATED TESTS: 23/23 PASS
+PRODUCTION BUILD: PASS
+WINDOWS LOCAL BUILD: PASS
+LOCAL UI INITIALIZATION: PASS
 ```
 
-Wallets are runtime-only and must never be committed into source.
+The browser startup regression caused by the earlier CDN `js-sha3` named export was removed by the local Keccak implementation. Windows path handling uses `fileURLToPath()`.
 
+## B. Runtime wallet mapping used for observed E2E
 
-## B0. Semantic pre-gate for this exact deployment
-
-Before using the demo path as reviewer evidence, run both probes against `0x7cDcdE83B2a5192ACC00412cf192684c951081cc` on fresh resources:
-
-1. **K1 / exclusive-without-keyword:** `All sales of the Work in the Territory shall be made through the Distributor.`
-   - expected: `EXCLUSIVE_GRANT`
-   - deterministic consequence: resource becomes `LOCKED`.
-2. **R2 / explicit override control:** `The Distributor is named sole distributor, but the Publisher may appoint others at will.`
-   - expected: `NON_EXCLUSIVE_GRANT`
-   - deterministic consequence: resource remains `OPEN`.
-
-If K1 returns `NON_EXCLUSIVE_GRANT`, STOP. Do not open the frontend submission gate and do not modify the accepted contract merely to force the expected answer.
-
-## C. Exclusive semantic + deterministic lock path
-
-1. Connect Wallet 1.
-2. Load the resource example and create a fresh resource.
-3. Wait for `FINALIZED` and confirm execution is `FINISHED_WITH_RETURN`.
-4. Confirm accepted state:
+Wallet addresses below are runtime test evidence only; they are not hardcoded into the contract or frontend.
 
 ```text
-state = OPEN
-grant_count = 0
+Wallet 1 — deployer / negative-test grantee:
+0x6276095FAEA15108740445ff277fdA8c304657F4
+
+Wallet 2 — resource creator / grantor:
+0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE
+
+Wallet 3 — grantee / exclusive holder:
+0x146e44881d35814bA582D265AF5b97ef2695ec8e
 ```
 
-5. In Submit grant, use that resource ID.
-6. Set `grantee_wallet` to Wallet 2 and label to `Distributor`.
-7. Load **Exclusive example**:
+The deployment wallet has no global admin privilege in the contract. User-flow writes were tested with the creator/holder roles required by contract logic.
+
+## C. K1 semantic gate — PASS
+
+Fresh resource:
+
+```text
+Name: Atlas distribution rights
+Scope: North America · print distribution
+Creator: Wallet 2
+Initial state: OPEN
+Initial grant_count: 0
+```
+
+K1 grant to Wallet 3:
 
 ```text
 All sales of the Work in the Territory shall be made through the Distributor.
 ```
 
-8. Submit once; wait for FINALIZED + successful GenVM execution.
-9. Confirm actual contract state:
+Observed accepted state:
 
 ```text
-verdict = EXCLUSIVE_GRANT
-state = LOCKED
+semantic verdict = EXCLUSIVE_GRANT
+resource state = LOCKED
 grant_count = 1
-exclusive_holder_wallet = Wallet 2
+current/exclusive holder = Wallet 3
+grant history = 1 EXCLUSIVE_GRANT record
 ```
 
-### Deterministic tooth
+**K1 semantic gate: PASS.**
 
-10. Keep Wallet 1 connected.
-11. On the same locked resource, change grant text and attempt another grant.
-12. Expected:
+## D. Locked-resource deterministic tooth — PASS
+
+While the K1 resource was still `LOCKED`, Wallet 2 attempted another grant on the same resource to Wallet 1.
+
+Observed transaction/execution behavior:
 
 ```text
-FINALIZED
-FINISHED_WITH_ERROR
-Resource is locked by an exclusive grant
+transaction reached FINALIZED
+GenVM result = FINISHED_WITH_ERROR
+frontend did not claim a successful grant
 ```
 
-13. Confirm resource remains LOCKED and grant_count remains 1.
-
-No second semantic verdict should be fabricated for the blocked call.
-
-## D. Release authorization
-
-Preferred three-wallet test if available:
-
-1. Wallet 3/non-holder attempts `release_exclusivity`.
-2. Expected FINALIZED + `FINISHED_WITH_ERROR`:
+Observed contract state after the failed write:
 
 ```text
-Only exclusive holder may release exclusivity
-```
-
-3. Switch to Wallet 2/recorded holder.
-4. Release exclusivity.
-5. Expected FINALIZED + `FINISHED_WITH_RETURN`.
-6. Re-read resource:
-
-```text
-state = OPEN
-locked = false
+resource = LOCKED
 grant_count = 1
-exclusive holder fields = empty
+current holder = Wallet 3
+grant history still contains only the original EXCLUSIVE_GRANT
 ```
 
-Historical grant remains visible.
+Therefore the later grant was rejected without fabricating or appending a new semantic result.
 
-If only two wallets are available, Wallet 1 can serve as the non-holder negative attempt before Wallet 2 releases.
+## E. Release authorization and holder release — PASS
 
-## E. Non-exclusive semantic control
+A non-holder release attempt did not unlock the K1 resource; accepted state remained:
 
-Use a **fresh separate resource** with Wallet 1 as creator.
+```text
+resource = LOCKED
+grant_count = 1
+current holder = Wallet 3
+```
 
-Submit:
+Wallet 3, the recorded exclusive holder, then released exclusivity.
+
+Observed accepted state:
+
+```text
+resource = OPEN
+grant_count = 1
+current holder = None
+historical EXCLUSIVE_GRANT remains visible
+```
+
+**Holder-only release consequence: PASS.**
+
+## F. R2 semantic control — PASS
+
+Fresh separate resource:
+
+```text
+Name: Atlas distribution rights control
+Scope: North America · digital distribution
+Creator: Wallet 2
+Initial state: OPEN
+Initial grant_count: 0
+Initial holder: None
+```
+
+R2 grant to Wallet 3:
 
 ```text
 The Distributor is named sole distributor, but the Publisher may appoint others at will.
 ```
 
-Expected:
+Observed accepted state:
 
 ```text
-verdict = NON_EXCLUSIVE_GRANT
-state = OPEN
+semantic verdict = NON_EXCLUSIVE_GRANT
+resource state = OPEN
 grant_count = 1
+current holder = None
+grant history = 1 NON_EXCLUSIVE_GRANT record
 ```
 
-This is the anti-keyword negative case.
+The production transaction card showed `FINALIZED · FINISHED_WITH_RETURN` with leader-receipt execution evidence, and the UI re-read accepted StudioNet state showing the values above.
 
-## F. Prior-history invariant after release
+**R2 semantic gate: PASS.**
 
-On the resource that was released in section D:
+## G. Wallet switching / frontend integration — PASS
 
-1. As creator, submit a clearly non-exclusive grant; expected success and grant_count 2.
-2. Submit text that semantically resolves to EXCLUSIVE_GRANT.
-3. Expected rollback after semantic classification:
+Observed during production E2E:
+
+- creator and holder wallets switched without losing the ability to re-inspect accepted resource state;
+- writes were not double-sent;
+- UI waited for finalization before treating writes as complete;
+- successful and failed execution paths were displayed differently;
+- state changes were rendered from contract reads, not inferred from tx hashes;
+- holder release and semantic grant results appeared without a manual page refresh;
+- wrong-role grant submission is guarded when the currently loaded resource proves the connected wallet is not the creator;
+- unsupported `gen_dbg_traceTransaction` is not called by the production frontend.
+
+## H. Production console smoke — PASS
+
+After completing E2E, DevTools Console was cleared, prior logs were not preserved, and the accepted R2 resource was inspected again.
+
+Observed:
 
 ```text
-Exclusive grant requires a resource with no prior grants
+No new red GrantLock/GenLayer runtime error after Inspect.
 ```
 
-The resource remains OPEN and history remains intact.
+Browser-extension `contentscript.js` warnings/issues are not GrantLock application errors.
 
-## G. Frontend/runtime gates
-
-During the above paths verify:
-
-- no manual F5 is required after a transaction;
-- loaded resource survives wallet switching;
-- buttons prevent double-send while busy;
-- explorer links point to the fresh deployment/tx;
-- execution errors are shown as errors, not success;
-- no local fabricated lock/count changes;
-- desktop layout is readable;
-- mobile layout is usable;
-- production console has no red errors or retry spam.
-
-## H. Runtime status
-
-At Vercel-ready export:
+## I. Gate summary
 
 ```text
 STATIC CHECK: PASS
 SOURCE PARITY: PASS
 PRODUCTION BUILD: PASS
-AUTOMATED TESTS: 19/19 PASS
-SEMANTIC K1/R2 ON THIS DEPLOYMENT: PENDING
-FRESH VERCEL RUNTIME E2E: PENDING
+AUTOMATED TESTS: 23/23 PASS
+DEPLOYMENT: PASS
+K1 EXCLUSIVE SEMANTIC: PASS
+LOCKED SECOND-GRANT REJECTION: PASS
+RELEASE AUTHORIZATION / HOLDER RELEASE: PASS
+R2 NON-EXCLUSIVE SEMANTIC: PASS
+WALLET SWITCHING: PASS
+AUTO STATE RE-READ: PASS
+PRODUCTION CONSOLE SMOKE: PASS
+VERCEL RUNTIME E2E: PASS
 ```
 
-Do not change `PENDING` to `PASS` until the current deployed Vercel build has been observed through both semantic branches and the deterministic lock/release consequences.
+## J. Not claimed
+
+The following were not required to establish the observed submission path and are not claimed as freshly executed in this final E2E session:
+
+- exhaustive equivalence testing for real-world overlap between distinct resource IDs;
+- a fresh post-release V1 attempt that semantically resolves to another `EXCLUSIVE_GRANT` on the same historical resource;
+- legal enforceability of any textual grant.

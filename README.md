@@ -1,16 +1,17 @@
 # GrantLock
 
-**GenLayer semantic exclusivity with deterministic enforcement.**
+**Semantic exclusivity, deterministic enforcement.**
 
-GrantLock is a production-oriented frontend for the steward-accepted `ExclusivityLock` Intelligent Contract source. The frontend name is intentionally different from the contract class; the contract source is preserved byte-for-byte.
+GrantLock is a production frontend for the steward-accepted `ExclusivityLock` GenLayer Intelligent Contract source. The frontend name is intentionally different from the contract class; the contract source is preserved byte-for-byte.
 
-## Fresh StudioNet deployment
+## Production deployment
 
 - Project/frontend: `GrantLock`
 - Contract class: `ExclusivityLock`
 - Network: GenLayer StudioNet
 - Contract: `0x7cDcdE83B2a5192ACC00412cf192684c951081cc`
 - Explorer: `https://explorer-studio.genlayer.com/address/0x7cDcdE83B2a5192ACC00412cf192684c951081cc`
+- Production app: `https://grant-lock.vercel.app/`
 - Contract source SHA256: `c82e52db2b1c3e0192db8212f08cc42ad749388e2cc1b8fa1da7733b0d04e3d3`
 
 ## What the contract decides
@@ -41,7 +42,7 @@ EXCLUSIVE_GRANT
 → every later submit_grant on that resource reverts before inference
 ```
 
-Release is also deterministic:
+Release is deterministic:
 
 ```text
 exclusive holder only
@@ -50,7 +51,7 @@ current holder fields cleared
 historical grant retained
 ```
 
-V1 does not allow a new exclusive grant after any prior grant history exists.
+V1 does not allow a new exclusive grant after prior grant history exists.
 
 ## Roles
 
@@ -60,66 +61,90 @@ V1 does not allow a new exclusive grant after any prior grant history exists.
 - views: public.
 - no global admin or deployer privilege.
 
-No test wallet is hardcoded into the contract or frontend. Runtime test wallets must be chosen explicitly per test session.
+No test wallet is hardcoded into the contract or frontend.
 
 ## Frontend behavior
 
-The app is intentionally evidence-first:
+The production UI is evidence-first:
 
-- uses the fresh deployed address directly;
-- connects MetaMask and switches to StudioNet before writes;
-- derives resource/grant IDs from the contract's exact deterministic domain-separated formulas;
+- binds the fresh StudioNet contract address directly;
+- connects MetaMask and requests StudioNet only when a write requires it;
+- derives resource/grant IDs from the contract's deterministic domain-separated formulas;
 - waits for `FINALIZED`;
 - distinguishes `FINISHED_WITH_RETURN` from `FINISHED_WITH_ERROR`;
-- falls back to raw leader execution evidence when StudioNet omits normalized execution metadata;
-- performs a single transaction fetch fallback rather than retry-spamming;
-- surfaces deterministic revert details when trace data is available;
-- re-reads resource and grant state after writes;
-- never increments grant count or flips lock state locally;
-- locks write buttons while a transaction is in flight;
-- keeps loaded resource state across wallet switching;
+- qualifies leader-receipt-only execution evidence rather than presenting it as validator consensus;
+- re-reads accepted contract state after writes;
+- never increments grant count or changes lock state locally;
+- blocks duplicate writes while one is in flight;
+- preserves loaded resource context across wallet switching;
+- guards creator-only grant submission when the loaded resource state proves the connected wallet is not the creator;
+- does not call unsupported StudioNet debug-trace RPCs;
 - supports desktop, tablet and mobile layouts.
 
-## Reviewer-friendly examples
+## Reviewer examples
 
-### Semantic positive / exclusive
+### K1 — semantic exclusive case
 
 ```text
 All sales of the Work in the Territory shall be made through the Distributor.
 ```
 
-Expected on a fresh resource:
+Observed on a fresh resource at the production deployment:
 
 ```text
 EXCLUSIVE_GRANT
 resource → LOCKED
+grant_count = 1
+exclusive holder recorded
 ```
 
-This intentionally avoids an explicit “exclusive” keyword.
+This intentionally avoids an explicit `exclusive` keyword.
 
-### Semantic negative / control
+### R2 — semantic control case
 
 ```text
 The Distributor is named sole distributor, but the Publisher may appoint others at will.
 ```
 
-Expected on a fresh separate resource:
+Observed on a separate fresh resource:
 
 ```text
 NON_EXCLUSIVE_GRANT
 resource → OPEN
+grant_count = 1
+current holder = None
 ```
 
 This intentionally contains a strong surface cue while preserving unilateral grantor freedom.
 
+## Production runtime verification
+
+Observed on `https://grant-lock.vercel.app/` against the exact contract above:
+
+- K1 semantic classification: **PASS** — `EXCLUSIVE_GRANT`.
+- Deterministic consequence: **PASS** — resource became `LOCKED`, grant count stayed authoritative on-chain, holder recorded.
+- Later grant on the locked resource: **PASS** — finalized with execution error and did not append a grant or change lock state.
+- Non-holder release authorization: **PASS by unchanged contract state** — resource remained locked until the recorded holder acted.
+- Holder release: **PASS** — resource returned to `OPEN`, holder cleared, historical exclusive grant remained.
+- R2 semantic classification: **PASS** — `NON_EXCLUSIVE_GRANT`.
+- R2 consequence: **PASS** — resource remained `OPEN`, grant count became `1`, current holder stayed `None`.
+- Wallet switching and state re-read: **PASS**.
+- Manual refresh after writes: **not required**.
+- Production console smoke after clearing prior logs and re-inspecting accepted state: **PASS**; no new GrantLock/GenLayer error was emitted.
+
+See `TESTING.md` for exact observed evidence and separation between semantic, deterministic and frontend gates.
+
 ## Local gates
 
 ```bash
+npm install
 npm run verify:source
 npm run check
 npm test
 npm run build
 ```
+
+Expected current automated result: **23/23 tests PASS**.
 
 Serve locally:
 
@@ -128,33 +153,6 @@ npm run dev
 ```
 
 Then open `http://127.0.0.1:4173`.
-
-## Current verification status
-
-Completed before package export:
-
-- source parity: PASS
-- static method/address/lifecycle checks: PASS
-- local automated tests: 19/19 PASS
-- Python/JavaScript ID derivation parity edge cases: PASS
-- Snap-free StudioNet network switch path: static PASS
-- CSP/security headers and calldata byte meter: present
-- production build: PASS
-- desktop/mobile static UI smoke: PASS
-
-Still required before final submission:
-
-- run fresh K1 and R2 semantic probes against this exact deployment/rubric;
-- connect actual MetaMask wallets;
-- exclusive semantic path;
-- deterministic locked-resource second-grant revert;
-- holder/non-holder release checks;
-- non-exclusive control path;
-- wallet switching;
-- automatic FINALIZED state refresh;
-- clean production console.
-
-Runtime evidence must be recorded only after it is actually observed. The demo examples are not treated as semantic PASS until K1/R2 are observed on this exact address. See `TESTING.md`.
 
 ## Honest limitation
 
