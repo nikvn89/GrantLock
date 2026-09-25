@@ -117,6 +117,8 @@ Then open `http://127.0.0.1:4173`.
 
 `PASS` is reserved for an observed on-chain row that includes its exact transaction hash and Explorer URL. Missing evidence is written as `NOT RUN`; prior prose recollections are not promoted to verifiable runtime proof. See `TESTING.md` for the handoff tables.
 
+Production evidence captured on 2026-09-25 is indexed in [`docs/evidence/README.md`](docs/evidence/README.md). It includes the irreversible-wallet confirmation, Explorer execution/finality view, and an authoritative accepted-state reread showing one `EXCLUSIVE_GRANT`, resource state `LOCKED`, and the recorded holder. Explorer rows in the screenshot use abbreviated hashes, so exact-hash test rows remain conservatively labelled in `TESTING.md`.
+
 ## Known limitations
 
 1. **The deployed source does not include a `# v0.2.16` runtime marker.** Adding even a comment would change the published SHA256 and require redeployment. The current source remains frozen; the marker should only be added during a future release that already requires a new deployment.

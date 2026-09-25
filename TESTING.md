@@ -31,8 +31,8 @@ Use `Normal (Full Consensus)`. Replace `NOT RUN` only after the exact transactio
 
 | Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
 |---|---|---|---|---|---|
-| C1 — create K1 resource | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
-| C2 — K1 grant → expected EXCLUSIVE/LOCKED | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C1 — create K1 resource | creator | `15f8407650c400147ed3499046a2b70c0eeb9ce3696737952cdd841d58e0c491` | full hash not recorded | final contract Explorer + screenshot | Observed finalized `SUCCESS` / `Accepted`; not labelled `PASS` without the full hash |
+| C2 — K1 grant → expected EXCLUSIVE/LOCKED | creator | `15f8407650c400147ed3499046a2b70c0eeb9ce3696737952cdd841d58e0c491` | full hash not recorded | final contract Explorer + screenshots | Observed `EXCLUSIVE_GRANT`, `LOCKED`, count `1`, recorded holder; not labelled `PASS` without the full hash |
 | C3 — second grant while LOCKED → expected execution error | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
 | C4 — release by non-holder → expected authorization error | non-holder | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
 | C5 — release by recorded holder → expected OPEN | holder | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
@@ -49,7 +49,7 @@ Every row must use a fresh resource with `grant_count = 0`. Record the first run
 
 | Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
 |---|---|---|---|---|---|
-| E1 — `All sales of the Work in the Territory shall be made through the Distributor.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
+| E1 — `All sales of the Work in the Territory shall be made through the Distributor.` | creator | `15f8407650c400147ed3499046a2b70c0eeb9ce3696737952cdd841d58e0c491` | full hash not recorded | final contract Explorer + screenshots | Observed `EXCLUSIVE_GRANT`; not labelled `PASS` without the full hash |
 | N5 — `All sales of the Work in the Territory shall be made through the Distributor or any other agent the Publisher selects.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
 | E2 — `The Publisher may appoint another distributor only with the Distributor's consent.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
 | N3 — `The Distributor is granted exclusive rights to promote the Work; appointment of additional distributors requires no consent.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
@@ -72,15 +72,16 @@ The E1/N5 opening clause is identical and the expected labels differ only becaus
 | Exact confirmed wallet enables one callback | local test | N/A | N/A | N/A | `PASS` — behaviour test with send spy count `1` |
 | Creator-as-grantee warning state | local test | N/A | N/A | N/A | `PASS` — behaviour test |
 | `<script>` in label and grant history text escaped | local test | N/A | N/A | N/A | `PASS` — behaviour test |
-| Confirmation UI screenshot | browser preview | N/A | N/A | N/A | `NOT RUN` — capture after deployment as `docs/evidence/grantee-wallet-confirmation.png` |
+| Confirmation UI screenshot | production browser | N/A | N/A | [`grantee-wallet-confirmation.png`](docs/evidence/grantee-wallet-confirmation.png) | `PASS` — complete wallet, warning, acknowledgement, and enabled action captured |
 
 ## F. Production browser/runtime checks
 
 | Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
 |---|---|---|---|---|---|
-| Production confirmation step displayed | creator | N/A | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` after this update |
+| Production confirmation step displayed | creator | N/A | N/A | `https://grant-lock.vercel.app/` + screenshot | `PASS` — deployed confirmation guard captured |
 | Wallet switching preserves loaded state | creator/holder | `NOT RUN` | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` after this update |
-| Console smoke after accepted-state read | viewer | `NOT RUN` | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` after this update |
+| Authoritative accepted-state reread | creator/viewer | `15f8407650c400147ed3499046a2b70c0eeb9ce3696737952cdd841d58e0c491` | N/A | [`final-locked-exclusive-grant.png`](docs/evidence/final-locked-exclusive-grant.png) | `PASS` — `LOCKED`, count `1`, `EXCLUSIVE_GRANT`, exact holder, append-only history |
+| Console smoke after accepted-state read | viewer | `NOT RUN` | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` — no console capture included |
 
 ## G. Evidence status summary
 
@@ -90,9 +91,9 @@ The E1/N5 opening clause is identical and the expected labels differ only becaus
 | Offline static/build gates | `PASS` | Commands executed on 2026-09-25 |
 | Behaviour tests | `24/24 PASS` | Executed locally |
 | Source guards | `10/10 PASS` | Executed locally; not runtime proof |
-| Final-address deterministic flow | `NOT RUN` | Transaction hashes/resource IDs not yet recorded |
+| Final-address deterministic flow | `PARTIAL` | C1/C2 and accepted state captured; full transaction hashes were not recorded |
 | Final-address ten-case semantic matrix | `NOT RUN` | Requires ten fresh resources and transactions |
-| Updated production browser smoke | `NOT RUN` | Requires deployment of the frontend-only update |
+| Updated production browser smoke | `PARTIAL PASS` | Confirmation and accepted-state reread captured; wallet-switch and console checks remain open |
 
 ## H. Not claimed
 
