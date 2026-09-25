@@ -174,6 +174,13 @@ footer{border-top:1px solid var(--border-soft);min-height:100px;padding:25px 28p
 
 .meter{position:static!important;display:block;margin-top:3px;text-align:right;color:#71828a!important}
 .meter.meter-warn{color:#e6c96c!important}
+.grant-confirmation{border:1px solid rgba(255,208,113,.34);background:var(--amber-soft);border-radius:14px;padding:14px;margin:14px 0;display:grid;gap:10px;transition:.18s ease}
+.grant-confirmation.confirmation-ready{border-color:rgba(85,215,189,.42);background:var(--green-soft)}
+.confirmation-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.confirmation-head span{font-size:8px;letter-spacing:.13em;color:var(--amber);font-weight:900}.confirmation-head strong{font-size:10px}
+.grant-confirmation>p{margin:0;color:#c7d1d6;font-size:10px;line-height:1.55}.grant-confirmation>p strong{color:#ffe1a2}
+.confirmation-wallet{border:1px solid var(--border);background:#07111a;border-radius:10px;padding:10px;display:grid;grid-template-columns:1fr auto;gap:5px 9px;align-items:center}.confirmation-wallet>span{grid-column:1/-1;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}.confirmation-wallet code{font-size:9px;word-break:break-all;color:#f5ead6}.confirmation-wallet button{border:1px solid var(--border);background:var(--panel-3);border-radius:7px;padding:6px 8px;font-size:8px;font-weight:800;cursor:pointer}.confirmation-wallet small{grid-column:1/-1;color:var(--green);font-size:8px}
+.same-wallet-warning{border:1px solid rgba(255,127,120,.38);background:var(--red-soft);color:#ffb0aa;border-radius:9px;padding:9px;font-size:9px;font-weight:700}
+.confirmation-check{display:flex!important;align-items:flex-start;gap:9px;border:0!important;padding:0!important}.confirmation-check input{width:16px;height:16px;margin:1px 0 0;accent-color:var(--green);flex:0 0 auto}.confirmation-check span{font-size:9px!important;color:#d2dbdf!important;line-height:1.5!important}.confirmation-status{position:static!important;text-align:left!important;color:var(--muted)!important;font-size:8px!important}
 .tx-actions{display:flex;align-items:center;gap:10px;margin-top:6px;flex-wrap:wrap}
 .tx-actions a{margin-top:0!important}
 .tx-stop{border:1px solid rgba(241,199,91,.35);background:transparent;color:#e5cf8b;border-radius:7px;padding:5px 8px;font-size:8px;font-weight:800;cursor:pointer}

@@ -78,3 +78,17 @@ test('grant payload applies the same strip and code-point length rules', () => {
 test('different grant text produces a different grant preimage', () => {
   assert.notEqual(grantPayloadFor(RID, 'text one'), grantPayloadFor(RID, 'text two'))
 })
+
+test('resource preimage strips surrounding whitespace while preserving emoji code points', () => {
+  const name = '  Atlas 🎬 rights  '
+  const clean = 'Atlas 🎬 rights'
+  assert.equal(resourcePayloadFor(CREATOR, name), resourcePayloadFor(CREATOR, clean))
+  assert.equal(resourcePayloadFor(CREATOR, name), `EXCLUSIVITY_LOCK:RESOURCE:V1|${CREATOR.toLowerCase()}|14|${clean}`)
+})
+
+test('grant preimage strips surrounding whitespace while preserving emoji code points', () => {
+  const text = '  Distributor may promote 🎬 releases  '
+  const clean = 'Distributor may promote 🎬 releases'
+  assert.equal(grantPayloadFor(RID, text), grantPayloadFor(RID, clean))
+  assert.equal(grantPayloadFor(RID, text), `EXCLUSIVITY_LOCK:GRANT:V1|${RID}|34|${clean}`)
+})

@@ -23,6 +23,13 @@ import {
   txExplorerUrl,
   waitFinalized,
 } from './genlayer.js'
+import {
+  escapeHtml,
+  grantConfirmationState,
+  isValidNonZeroWallet,
+  normalizeWallet,
+  submitOnlyAfterGrantConfirmation,
+} from './safety.js'
 
 const resourceExample = {
   name: 'Atlas distribution rights',
@@ -47,6 +54,7 @@ const state = {
   busy: false,
   waitCancel: null,
   waitStartedAt: 0,
+  confirmedGranteeWallet: '',
 }
 
 const $ = (id) => document.getElementById(id)
@@ -63,9 +71,10 @@ function warning(element, message = '') {
 
 function setBusy(value) {
   state.busy = value
-  for (const id of ['createResource', 'submitGrant', 'releaseExclusivity', 'inspectResource']) {
+  for (const id of ['createResource', 'releaseExclusivity', 'inspectResource']) {
     $(id).disabled = value
   }
+  updateGrantConfirmation()
 }
 
 function setTx({ phase, label, message, hash = '' }) {
@@ -132,6 +141,7 @@ function updateWallet() {
   $('walletLabel').textContent = state.account ? shortAddress(state.account) : 'Connect wallet'
   updateRole()
   updateDerivedResource()
+  updateGrantConfirmation()
 }
 
 function updateRole() {
@@ -211,6 +221,31 @@ function updateCalldataMeter() {
   meter.classList.toggle('meter-warn', over)
 }
 
+function updateGrantConfirmation({ reset = false } = {}) {
+  const wallet = $('granteeWallet').value.trim()
+  const checkbox = $('confirmGranteeRisk')
+  if (reset) {
+    checkbox.checked = false
+    state.confirmedGranteeWallet = ''
+  }
+  if (checkbox.checked && !state.confirmedGranteeWallet) state.confirmedGranteeWallet = wallet
+  if (!checkbox.checked) state.confirmedGranteeWallet = ''
+
+  const status = grantConfirmationState({
+    wallet,
+    creatorWallet: state.account,
+    acknowledged: checkbox.checked,
+    confirmedWallet: state.confirmedGranteeWallet,
+  })
+  $('confirmationWallet').textContent = status.validWallet ? wallet : 'Enter a valid non-zero wallet above'
+  hidden($('sameWalletWarning'), !status.sameAsCreator)
+  $('submitGrant').disabled = state.busy || !status.ready
+  $('confirmationStatus').textContent = status.ready
+    ? 'Confirmed for this exact wallet. Signing is enabled.'
+    : 'Confirm the irreversible holder rule before signing.'
+  $('grantConfirmation').classList.toggle('confirmation-ready', status.ready)
+}
+
 function updateDerivedResource() {
   const name = $('resourceName').value.trim()
   if (!state.account || !name) {
@@ -264,15 +299,6 @@ async function revealGrant(grantId, button) {
   } catch (error) {
     detail.textContent = `Grant read unavailable: ${cleanError(error)}`
   }
-}
-
-function escapeHtml(value) {
-  return String(value ?? '')
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;')
 }
 
 function renderResource() {
@@ -408,8 +434,22 @@ async function submitGrant() {
   const label = $('granteeLabel').value.trim()
   const text = $('grantText').value.trim()
   if (!/^[0-9a-f]{64}$/.test(resourceId)) return setTx({ phase: 'ERROR', label: 'Submit grant', message: 'A valid 64-character resource ID is required.' })
-  if (!/^0x[0-9a-fA-F]{40}$/.test(wallet) || /^0x0{40}$/i.test(wallet)) return setTx({ phase: 'ERROR', label: 'Submit grant', message: 'Enter a valid non-zero grantee wallet.' })
+  if (!isValidNonZeroWallet(wallet)) return setTx({ phase: 'ERROR', label: 'Submit grant', message: 'Enter a valid non-zero grantee wallet.' })
   if (!label || !text) return setTx({ phase: 'ERROR', label: 'Submit grant', message: 'Grantee label and grant text are required.' })
+
+  const confirmation = grantConfirmationState({
+    wallet,
+    creatorWallet: state.account,
+    acknowledged: $('confirmGranteeRisk').checked,
+    confirmedWallet: state.confirmedGranteeWallet,
+  })
+  if (!confirmation.ready) {
+    return setTx({
+      phase: 'ERROR',
+      label: 'Submit grant blocked',
+      message: 'Confirm the full grantee wallet and irreversible holder rule. No transaction was sent.',
+    })
+  }
 
   // If this exact resource is already loaded from accepted state, enforce the
   // deterministic creator-only rule in the UI before asking MetaMask to sign.
@@ -432,7 +472,17 @@ async function submitGrant() {
   setTx({ phase: 'SIGNING', label: 'Submit grant', message: 'Waiting for MetaMask signature…' })
   let hash = ''
   try {
-    hash = await submitGrantTx(state.account, resourceId, wallet, label, text)
+    const guarded = await submitOnlyAfterGrantConfirmation(
+      {
+        wallet,
+        creatorWallet: state.account,
+        acknowledged: $('confirmGranteeRisk').checked,
+        confirmedWallet: state.confirmedGranteeWallet,
+      },
+      () => submitGrantTx(state.account, resourceId, wallet, label, text),
+    )
+    if (!guarded.sent) throw new Error('Grant confirmation expired. No transaction was sent.')
+    hash = guarded.result
     const receipt = await waitForFinalizedUi(hash, 'Submit grant', 'Semantic consensus is running. Waiting for FINALIZED…')
     const outcome = executionOutcome(receipt)
     if (outcome.ok === false) {
@@ -542,6 +592,10 @@ function bind() {
   $('copyContract').addEventListener('click', () => copyText(CONTRACT_ADDRESS, $('copyContractState')))
   $('copyDerivedResource').addEventListener('click', () => copyText($('derivedResourceId').textContent))
   $('copyResourceId').addEventListener('click', () => state.resource && copyText(state.resource.resource_id))
+  $('copyGranteeWallet').addEventListener('click', () => {
+    const wallet = $('granteeWallet').value.trim()
+    if (isValidNonZeroWallet(wallet)) copyText(wallet, $('copyGranteeWalletState'))
+  })
   $('connectWallet').addEventListener('click', connectWallet)
   $('loadResourceExample').addEventListener('click', loadResourceExample)
   $('loadExclusiveExample').addEventListener('click', () => loadGrantExample(exclusiveExample))
@@ -557,7 +611,15 @@ function bind() {
     document.querySelector('#grant').scrollIntoView({ behavior: 'smooth', block: 'start' })
   })
   for (const id of ['resourceName', 'scopeLabel', 'granteeLabel', 'grantText']) $(id).addEventListener('input', updateCounts)
-  for (const id of ['granteeWallet', 'grantResourceId']) $(id).addEventListener('input', updateCalldataMeter)
+  $('granteeWallet').addEventListener('input', () => {
+    updateCalldataMeter()
+    updateGrantConfirmation({ reset: true })
+  })
+  $('grantResourceId').addEventListener('input', updateCalldataMeter)
+  $('confirmGranteeRisk').addEventListener('change', () => {
+    state.confirmedGranteeWallet = $('confirmGranteeRisk').checked ? normalizeWallet($('granteeWallet').value) : ''
+    updateGrantConfirmation()
+  })
   $('resourceName').addEventListener('input', updateDerivedResource)
   for (const id of ['grantResourceId', 'inspectResourceId']) {
     $(id).addEventListener('input', (event) => { event.target.value = event.target.value.replace(/[^0-9a-fA-F]/g, '').toLowerCase() })
@@ -583,6 +645,7 @@ async function init() {
   loadGrantExample(exclusiveExample)
   renderResource()
   updateCounts()
+  updateGrantConfirmation()
   await updateNetworkWarning()
   try {
     state.limits = await readLimits()
