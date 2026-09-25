@@ -1,5 +1,18 @@
 # Changelog
 
+## 2026-09-25 — Evidence integrity and grantee confirmation
+
+- Added a blocking full-wallet confirmation before `submit_grant`; changing the wallet invalidates the acknowledgement.
+- Added a separate creator-as-grantee warning and explicit no-admin/no-recovery disclosure.
+- Moved reusable wallet validation and HTML escaping into tested pure helpers.
+- Expanded behaviour coverage for emoji/whitespace ID parity, invalid and zero wallets, confirmation gating, no-send-before-confirmation, and malicious history markup.
+- Renamed the former integration regex suite to `source-contract-guards.test.mjs` and documented that it is a source guard rather than runtime contract execution.
+- Split automated results into 24/24 behaviour tests and 10/10 source guards (34/34 total).
+- Rewrote runtime evidence tables so any row without a transaction hash is `NOT RUN`, never `PASS`.
+- Added GitHub Actions CI with source parity, static check, test, and build gates; added an MIT license.
+- Documented the frozen runtime-marker and resource-name/scope identity limitations.
+- **Contract source and deployment address unchanged.**
+
 ## 2026-09-01 — Final Vercel E2E PASS
 
 - Verified production at `https://grant-lock.vercel.app/` against StudioNet contract `0x7cDcdE83B2a5192ACC00412cf192684c951081cc`.

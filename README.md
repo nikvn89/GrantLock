@@ -2,13 +2,13 @@
 
 **Semantic exclusivity, deterministic enforcement.**
 
-GrantLock is a production frontend for the steward-accepted `ExclusivityLock` GenLayer Intelligent Contract source. The frontend name is intentionally different from the contract class; the contract source is preserved byte-for-byte.
+GrantLock is a production frontend for the steward-accepted `ExclusivityLock` GenLayer Intelligent Contract source. The frontend name is intentionally different from the contract class; the deployed contract source remains byte-for-byte unchanged.
 
 ## Production deployment
 
 - Project/frontend: `GrantLock`
 - Contract class: `ExclusivityLock`
-- Network: GenLayer StudioNet
+- Network: GenLayer StudioNet (`61999`, py-genlayer `v0.2`)
 - Contract: `0x7cDcdE83B2a5192ACC00412cf192684c951081cc`
 - Explorer: `https://explorer-studio.genlayer.com/address/0x7cDcdE83B2a5192ACC00412cf192684c951081cc`
 - Production app: `https://grant-lock.vercel.app/`
@@ -23,9 +23,7 @@ EXCLUSIVE_GRANT
 NON_EXCLUSIVE_GRANT
 ```
 
-The semantic question is whether the submitted grant both establishes the grant relationship for the declared grantee and removes the grantor's unilateral freedom to confer the same grant over the same contract-local resource scope to an additional grantee while the grant remains in force.
-
-AI decides only that semantic classification.
+The semantic question is whether the grant establishes the declared relationship and removes the grantor's unilateral freedom to confer the same grant over the same contract-local resource scope to another grantee while the grant remains in force. AI decides only that semantic classification.
 
 ## Deterministic consequence
 
@@ -42,10 +40,9 @@ EXCLUSIVE_GRANT
 → every later submit_grant on that resource reverts before inference
 ```
 
-Release is deterministic:
+Release is deterministic and holder-only:
 
 ```text
-exclusive holder only
 LOCKED → OPEN
 current holder fields cleared
 historical grant retained
@@ -63,88 +60,50 @@ V1 does not allow a new exclusive grant after prior grant history exists.
 
 No test wallet is hardcoded into the contract or frontend.
 
-## Frontend behavior
+## Frontend safety and transaction truth
 
-The production UI is evidence-first:
+The production UI:
 
-- binds the fresh StudioNet contract address directly;
-- connects MetaMask and requests StudioNet only when a write requires it;
-- derives resource/grant IDs from the contract's deterministic domain-separated formulas;
-- waits for `FINALIZED`;
-- distinguishes `FINISHED_WITH_RETURN` from `FINISHED_WITH_ERROR`;
-- qualifies leader-receipt-only execution evidence rather than presenting it as validator consensus;
-- re-reads accepted contract state after writes;
+- binds the final StudioNet address directly;
+- derives resource/grant IDs from the contract's domain-separated formulas;
+- waits for `FINALIZED`, checks the GenVM result, and re-reads accepted state;
 - never increments grant count or changes lock state locally;
 - blocks duplicate writes while one is in flight;
 - preserves loaded resource context across wallet switching;
-- guards creator-only grant submission when the loaded resource state proves the connected wallet is not the creator;
-- does not call unsupported StudioNet debug-trace RPCs;
-- supports desktop, tablet and mobile layouts.
+- blocks a proven wrong creator before signing;
+- shows the full 42-character grantee wallet before every grant;
+- requires an explicit acknowledgement that only that exact wallet can release an exclusive lock;
+- warns separately when the grantee matches the connected creator;
+- states that the contract has no admin, creator override, or recovery path;
+- escapes untrusted labels and grant text before rendering history.
 
-## Reviewer examples
+Changing the grantee wallet invalidates the acknowledgement and disables signing again. The confirmation gate is tested with a transaction spy: no send callback runs before confirmation.
 
-### K1 — semantic exclusive case
+## Semantic evaluation set
 
-```text
-All sales of the Work in the Territory shall be made through the Distributor.
-```
+The earlier validation deployment contains a four-case historical run. The final-deployment evidence plan now uses ten cases with four adversarial pairs, including an identical opening clause with opposite expected labels. These cases are listed in `TESTING.md` and the Intelligent Contract package's `RUNTIME_EVIDENCE.md`.
 
-Observed on a fresh resource at the production deployment:
+Until every final-deployment row contains a real transaction hash, resource ID, Explorer URL, and observed verdict, that row is marked `NOT RUN`. The repository does not claim that the expanded ten-case set has already proved semantic rather than lexical behavior.
 
-```text
-EXCLUSIVE_GRANT
-resource → LOCKED
-grant_count = 1
-exclusive holder recorded
-```
+## Automated test classification
 
-This intentionally avoids an explicit `exclusive` keyword.
+The current offline suite is separated honestly:
 
-### R2 — semantic control case
+- **Behaviour tests: 24/24** — deterministic ID parity, Keccak vectors, source identity invariants, wallet validation, confirmation gating, no-send-before-confirmation, and HTML escaping.
+- **Source guards: 10/10** — static integration markers that detect frontend/client drift; these do not execute Intelligent Contract behavior.
+- **Total: 34/34**.
 
-```text
-The Distributor is named sole distributor, but the Publisher may appoint others at will.
-```
-
-Observed on a separate fresh resource:
-
-```text
-NON_EXCLUSIVE_GRANT
-resource → OPEN
-grant_count = 1
-current holder = None
-```
-
-This intentionally contains a strong surface cue while preserving unilateral grantor freedom.
-
-## Production runtime verification
-
-Observed on `https://grant-lock.vercel.app/` against the exact contract above:
-
-- K1 semantic classification: **PASS** — `EXCLUSIVE_GRANT`.
-- Deterministic consequence: **PASS** — resource became `LOCKED`, grant count stayed authoritative on-chain, holder recorded.
-- Later grant on the locked resource: **PASS** — finalized with execution error and did not append a grant or change lock state.
-- Non-holder release authorization: **PASS by unchanged contract state** — resource remained locked until the recorded holder acted.
-- Holder release: **PASS** — resource returned to `OPEN`, holder cleared, historical exclusive grant remained.
-- R2 semantic classification: **PASS** — `NON_EXCLUSIVE_GRANT`.
-- R2 consequence: **PASS** — resource remained `OPEN`, grant count became `1`, current holder stayed `None`.
-- Wallet switching and state re-read: **PASS**.
-- Manual refresh after writes: **not required**.
-- Production console smoke after clearing prior logs and re-inspecting accepted state: **PASS**; no new GrantLock/GenLayer error was emitted.
-
-See `TESTING.md` for exact observed evidence and separation between semantic, deterministic and frontend gates.
-
-## Local gates
+Run all five offline gates:
 
 ```bash
-npm install
+npm ci
 npm run verify:source
 npm run check
 npm test
 npm run build
 ```
 
-Expected current automated result: **23/23 tests PASS**.
+`npm run verify:source` is also the first project-specific CI gate. It automatically rejects any change to the frozen deployed source before the remaining checks run.
 
 Serve locally:
 
@@ -154,6 +113,17 @@ npm run dev
 
 Then open `http://127.0.0.1:4173`.
 
-## Honest limitation
+## Runtime evidence policy
 
-A lock applies to exactly one contract-local `resource_id`. GrantLock does not infer whether different resource IDs, names or scope labels overlap in the real world, and `LOCKED` is not a legal-enforceability judgment.
+`PASS` is reserved for an observed on-chain row that includes its exact transaction hash and Explorer URL. Missing evidence is written as `NOT RUN`; prior prose recollections are not promoted to verifiable runtime proof. See `TESTING.md` for the handoff tables.
+
+## Known limitations
+
+1. **The deployed source does not include a `# v0.2.16` runtime marker.** Adding even a comment would change the published SHA256 and require redeployment. The current source remains frozen; the marker should only be added during a future release that already requires a new deployment.
+2. **`resource_id` does not include `scope_label`.** One creator cannot create the same resource name twice with different scopes; the second call reverts as an existing resource. Use distinct resource names for separate scopes. Changing the contract docstring or ID formula would change the frozen source and is intentionally outside this release.
+3. A lock applies to exactly one contract-local `resource_id`. GrantLock does not infer whether different IDs overlap in the real world, map wallets to legal identities, or determine legal enforceability.
+4. A mistyped holder wallet can make an exclusive lock unrecoverable. The frontend confirmation materially reduces this risk but cannot change the contract's no-admin design.
+
+## License
+
+MIT. See `LICENSE`.

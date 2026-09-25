@@ -1,215 +1,105 @@
 # GrantLock Testing
 
-This file separates local/static evidence, transaction finality, GenVM execution, semantic verdicts, deterministic consequences and frontend/Vercel behavior.
+This document separates offline behaviour tests, source guards, transaction finality, GenVM execution, semantic verdicts, deterministic consequences, and browser checks. A runtime row is never marked `PASS` without its exact transaction hash and Explorer URL.
 
-## Deployment identity
+## A. Deployment identity
 
-```text
-Network: GenLayer StudioNet
-Contract: 0x7cDcdE83B2a5192ACC00412cf192684c951081cc
-Explorer: https://explorer-studio.genlayer.com/address/0x7cDcdE83B2a5192ACC00412cf192684c951081cc
-Production: https://grant-lock.vercel.app/
-Source SHA256: c82e52db2b1c3e0192db8212f08cc42ad749388e2cc1b8fa1da7733b0d04e3d3
-```
+| Field | Value |
+|---|---|
+| Network | GenLayer StudioNet (`61999`, py-genlayer `v0.2`) |
+| Final contract | `0x7cDcdE83B2a5192ACC00412cf192684c951081cc` |
+| Explorer | `https://explorer-studio.genlayer.com/address/0x7cDcdE83B2a5192ACC00412cf192684c951081cc` |
+| Production | `https://grant-lock.vercel.app/` |
+| Source SHA256 | `c82e52db2b1c3e0192db8212f08cc42ad749388e2cc1b8fa1da7733b0d04e3d3` |
 
-## A. Local gates
+## B. Offline gates — executed 2026-09-25
 
-Commands:
+| Gate | Command | Observed result |
+|---|---|---|
+| Source identity | `npm run verify:source` | `SOURCE PARITY PASS c82e52db…e3c3` |
+| Static checks | `npm run check` | `STATIC CHECK PASS` |
+| Behaviour tests | `node --test tests/id-parity.test.mjs tests/keccak.test.mjs tests/source-parity.test.mjs tests/frontend-safety.test.mjs` | `24/24 PASS` |
+| Source guards | `node --test tests/source-contract-guards.test.mjs` | `10/10 PASS` |
+| Full suite | `npm test` | `34/34 PASS` |
+| Production build | `npm run build` | `PRODUCTION BUILD PASS` |
 
-```bash
-npm install
-npm run verify:source
-npm run check
-npm test
-npm run build
-```
+`tests/source-contract-guards.test.mjs` checks source markers and integration wiring. It does not execute Intelligent Contract behaviour. The behaviour group covers deterministic ID parity, Keccak vectors, frozen-source invariants, wallet validation, confirmation gating, no-send-before-confirmation, and history escaping.
 
-Observed status:
+## C. Final-deployment deterministic flow
 
-```text
-SOURCE PARITY: PASS
-STATIC CHECK: PASS
-AUTOMATED TESTS: 23/23 PASS
-PRODUCTION BUILD: PASS
-WINDOWS LOCAL BUILD: PASS
-LOCAL UI INITIALIZATION: PASS
-```
+Use `Normal (Full Consensus)`. Replace `NOT RUN` only after the exact transaction is finalized and its accepted state has been re-read.
 
-The browser startup regression caused by the earlier CDN `js-sha3` named export was removed by the local Keccak implementation. Windows path handling uses `fileURLToPath()`.
+| Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
+|---|---|---|---|---|---|
+| C1 — create K1 resource | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C2 — K1 grant → expected EXCLUSIVE/LOCKED | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C3 — second grant while LOCKED → expected execution error | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C4 — release by non-holder → expected authorization error | non-holder | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C5 — release by recorded holder → expected OPEN | holder | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C6 — non-exclusive grant after release → expected OPEN/count +1 | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C7 — exclusive verdict after prior history → expected rollback | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C8 — create R2 resource | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
+| C9 — R2 grant → expected NON_EXCLUSIVE/OPEN | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` |
 
-## B. Runtime wallet mapping used for observed E2E
+**C3 is the primary deterministic-lock proof.** Its evidence is incomplete until the transaction hash, resource ID, finalized execution error, and unchanged accepted state are recorded.
 
-Wallet addresses below are runtime test evidence only; they are not hardcoded into the contract or frontend.
+## D. Ten-case semantic matrix on the final address
 
-```text
-Wallet 1 — deployer / negative-test grantee:
-0x6276095FAEA15108740445ff277fdA8c304657F4
+Every row must use a fresh resource with `grant_count = 0`. Record the first run honestly; do not repeat a case merely to obtain the expected verdict.
 
-Wallet 2 — resource creator / grantor:
-0x037f58E33c1Ec8fdA272361E0aAC1e31054a1CDE
+| Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
+|---|---|---|---|---|---|
+| E1 — `All sales of the Work in the Territory shall be made through the Distributor.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
+| N5 — `All sales of the Work in the Territory shall be made through the Distributor or any other agent the Publisher selects.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
+| E2 — `The Publisher may appoint another distributor only with the Distributor's consent.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
+| N3 — `The Distributor is granted exclusive rights to promote the Work; appointment of additional distributors requires no consent.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
+| E3 — `The Distributor is appointed for the Territory. The Publisher retains full discretion over pricing, but may not appoint a second distributor for the Territory during the term.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
+| N2 — `The Publisher may appoint another distributor at its own discretion.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
+| E4 — `The Distributor is appointed for the Territory and no party other than the Distributor shall be permitted to sell the Work there.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
+| N1 — `The Distributor is named sole distributor, but the Publisher may appoint others at will.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
+| E5 — `The Distributor is appointed for the Territory, and the Publisher's right to appoint additional distributors is suspended for the duration of this appointment.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `EXCLUSIVE_GRANT`) |
+| N4 — `The Publisher shall not appoint another distributor without first notifying the Distributor.` | creator | `NOT RUN` | `NOT RUN` | `NOT RUN` | `NOT RUN` (expected `NON_EXCLUSIVE_GRANT`) |
 
-Wallet 3 — grantee / exclusive holder:
-0x146e44881d35814bA582D265AF5b97ef2695ec8e
-```
+The E1/N5 opening clause is identical and the expected labels differ only because N5 preserves another appointment path. The full matrix was designed to remove the accidental single-token separation in the earlier four-case set. It is a test plan, not completed proof, until the table contains real hashes and observed labels.
 
-The deployment wallet has no global admin privilege in the contract. User-flow writes were tested with the creator/holder roles required by contract logic.
+## E. Frontend safety evidence
 
-## C. K1 semantic gate — PASS
+| Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
+|---|---|---|---|---|---|
+| Invalid or zero grantee blocked | local test | N/A | N/A | N/A | `PASS` — behaviour test |
+| Submit disabled before acknowledgement | local test | N/A | N/A | N/A | `PASS` — behaviour test |
+| No transaction callback before acknowledgement | local test | N/A | N/A | N/A | `PASS` — behaviour test with send spy count `0` |
+| Exact confirmed wallet enables one callback | local test | N/A | N/A | N/A | `PASS` — behaviour test with send spy count `1` |
+| Creator-as-grantee warning state | local test | N/A | N/A | N/A | `PASS` — behaviour test |
+| `<script>` in label and grant history text escaped | local test | N/A | N/A | N/A | `PASS` — behaviour test |
+| Confirmation UI screenshot | browser preview | N/A | N/A | N/A | `NOT RUN` — capture after deployment as `docs/evidence/grantee-wallet-confirmation.png` |
 
-Fresh resource:
+## F. Production browser/runtime checks
 
-```text
-Name: Atlas distribution rights
-Scope: North America · print distribution
-Creator: Wallet 2
-Initial state: OPEN
-Initial grant_count: 0
-```
+| Ca | Wallet | resource_id | tx hash | Explorer | Kết quả quan sát |
+|---|---|---|---|---|---|
+| Production confirmation step displayed | creator | N/A | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` after this update |
+| Wallet switching preserves loaded state | creator/holder | `NOT RUN` | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` after this update |
+| Console smoke after accepted-state read | viewer | `NOT RUN` | N/A | `https://grant-lock.vercel.app/` | `NOT RUN` after this update |
 
-K1 grant to Wallet 3:
+## G. Evidence status summary
 
-```text
-All sales of the Work in the Territory shall be made through the Distributor.
-```
+| Evidence family | Status | Reason |
+|---|---|---|
+| Frozen source parity | `PASS` | Exact SHA verified locally |
+| Offline static/build gates | `PASS` | Commands executed on 2026-09-25 |
+| Behaviour tests | `24/24 PASS` | Executed locally |
+| Source guards | `10/10 PASS` | Executed locally; not runtime proof |
+| Final-address deterministic flow | `NOT RUN` | Transaction hashes/resource IDs not yet recorded |
+| Final-address ten-case semantic matrix | `NOT RUN` | Requires ten fresh resources and transactions |
+| Updated production browser smoke | `NOT RUN` | Requires deployment of the frontend-only update |
 
-Observed accepted state:
+## H. Not claimed
 
-```text
-semantic verdict = EXCLUSIVE_GRANT
-resource state = LOCKED
-grant_count = 1
-current/exclusive holder = Wallet 3
-grant history = 1 EXCLUSIVE_GRANT record
-```
-
-**K1 semantic gate: PASS.**
-
-## D. Locked-resource deterministic tooth — PASS
-
-While the K1 resource was still `LOCKED`, Wallet 2 attempted another grant on the same resource to Wallet 1.
-
-Observed transaction/execution behavior:
-
-```text
-transaction reached FINALIZED
-GenVM result = FINISHED_WITH_ERROR
-frontend did not claim a successful grant
-```
-
-Observed contract state after the failed write:
-
-```text
-resource = LOCKED
-grant_count = 1
-current holder = Wallet 3
-grant history still contains only the original EXCLUSIVE_GRANT
-```
-
-Therefore the later grant was rejected without fabricating or appending a new semantic result.
-
-## E. Release authorization and holder release — PASS
-
-A non-holder release attempt did not unlock the K1 resource; accepted state remained:
-
-```text
-resource = LOCKED
-grant_count = 1
-current holder = Wallet 3
-```
-
-Wallet 3, the recorded exclusive holder, then released exclusivity.
-
-Observed accepted state:
-
-```text
-resource = OPEN
-grant_count = 1
-current holder = None
-historical EXCLUSIVE_GRANT remains visible
-```
-
-**Holder-only release consequence: PASS.**
-
-## F. R2 semantic control — PASS
-
-Fresh separate resource:
-
-```text
-Name: Atlas distribution rights control
-Scope: North America · digital distribution
-Creator: Wallet 2
-Initial state: OPEN
-Initial grant_count: 0
-Initial holder: None
-```
-
-R2 grant to Wallet 3:
-
-```text
-The Distributor is named sole distributor, but the Publisher may appoint others at will.
-```
-
-Observed accepted state:
-
-```text
-semantic verdict = NON_EXCLUSIVE_GRANT
-resource state = OPEN
-grant_count = 1
-current holder = None
-grant history = 1 NON_EXCLUSIVE_GRANT record
-```
-
-The production transaction card showed `FINALIZED · FINISHED_WITH_RETURN` with leader-receipt execution evidence, and the UI re-read accepted StudioNet state showing the values above.
-
-**R2 semantic gate: PASS.**
-
-## G. Wallet switching / frontend integration — PASS
-
-Observed during production E2E:
-
-- creator and holder wallets switched without losing the ability to re-inspect accepted resource state;
-- writes were not double-sent;
-- UI waited for finalization before treating writes as complete;
-- successful and failed execution paths were displayed differently;
-- state changes were rendered from contract reads, not inferred from tx hashes;
-- holder release and semantic grant results appeared without a manual page refresh;
-- wrong-role grant submission is guarded when the currently loaded resource proves the connected wallet is not the creator;
-- unsupported `gen_dbg_traceTransaction` is not called by the production frontend.
-
-## H. Production console smoke — PASS
-
-After completing E2E, DevTools Console was cleared, prior logs were not preserved, and the accepted R2 resource was inspected again.
-
-Observed:
-
-```text
-No new red GrantLock/GenLayer runtime error after Inspect.
-```
-
-Browser-extension `contentscript.js` warnings/issues are not GrantLock application errors.
-
-## I. Gate summary
-
-```text
-STATIC CHECK: PASS
-SOURCE PARITY: PASS
-PRODUCTION BUILD: PASS
-AUTOMATED TESTS: 23/23 PASS
-DEPLOYMENT: PASS
-K1 EXCLUSIVE SEMANTIC: PASS
-LOCKED SECOND-GRANT REJECTION: PASS
-RELEASE AUTHORIZATION / HOLDER RELEASE: PASS
-R2 NON-EXCLUSIVE SEMANTIC: PASS
-WALLET SWITCHING: PASS
-AUTO STATE RE-READ: PASS
-PRODUCTION CONSOLE SMOKE: PASS
-VERCEL RUNTIME E2E: PASS
-```
-
-## J. Not claimed
-
-The following were not required to establish the observed submission path and are not claimed as freshly executed in this final E2E session:
-
-- exhaustive equivalence testing for real-world overlap between distinct resource IDs;
-- a fresh post-release V1 attempt that semantically resolves to another `EXCLUSIVE_GRANT` on the same historical resource;
-- legal enforceability of any textual grant.
+| Claim | Status | Note |
+|---|---|---|
+| Ten-case semantic-not-lexical proof on the final address | `NOT RUN` | Do not claim until all ten rows are populated |
+| Exhaustive equivalence across distinct real-world rights | Not claimed | Outside the contract's resource-local scope |
+| Legal enforceability | Not claimed | `LOCKED` is only contract-local enforcement |
+| Runtime pin added to deployed source | Not changed | Would change SHA and require redeployment |
+| Scope label included in resource identity | Not implemented | Use distinct resource names for separate scopes |

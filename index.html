@@ -113,7 +113,15 @@
               <label><span>Grantee label</span><input id="granteeLabel" maxlength="80" placeholder="Distributor" /><small id="granteeLabelCount">0/80</small></label>
             </div>
             <label><span>Grant text</span><textarea id="grantText" maxlength="1200" rows="6" placeholder="Describe the grant in natural language."></textarea><small id="grantTextCount">0/1200</small><small id="calldataMeter" class="meter" role="status" aria-live="polite"></small></label>
-            <button class="primary-button full" id="submitGrant">Run semantic grant</button>
+            <div class="grant-confirmation" id="grantConfirmation">
+              <div class="confirmation-head"><span>REQUIRED WALLET CONFIRMATION</span><strong>Confirm before signing</strong></div>
+              <p>If consensus returns <strong>EXCLUSIVE_GRANT</strong>, only the exact wallet below can release the lock. This is permanent: the contract has no admin, creator override, or recovery path.</p>
+              <div class="confirmation-wallet"><span>Full grantee wallet · 42 characters</span><code id="confirmationWallet">Enter a valid non-zero wallet above</code><button type="button" id="copyGranteeWallet">Copy wallet</button><small id="copyGranteeWalletState"></small></div>
+              <div class="same-wallet-warning hidden" id="sameWalletWarning">⚠ The grantee matches the connected creator wallet. This is unusual and may be an input mistake.</div>
+              <label class="confirmation-check"><input type="checkbox" id="confirmGranteeRisk" /><span>I verified the full wallet. I understand that only this wallet can release an exclusive lock and there is no recovery mechanism.</span></label>
+              <small class="confirmation-status" id="confirmationStatus">Confirm the irreversible holder rule before signing.</small>
+            </div>
+            <button class="primary-button full" id="submitGrant" disabled>Run semantic grant</button>
             <p class="fineprint">If the resource is already <strong>LOCKED</strong>, the contract rejects this transaction before semantic inference.</p>
           </article>
         </section>
